@@ -54,8 +54,12 @@ def sample(model, scheduler, train_config, diffusion_model_config,
         sample_classes = torch.tensor([target_class] * batch_size)
         print(f'Generating {batch_size} images for class {target_class}')
     else:
-        # Random class conditioning
-        sample_classes = torch.randint(0, num_classes, (batch_size, ))
+        # Random class conditioning - exclude avoid_list classes
+        available_classes = [c for c in range(num_classes) if c not in (avoid_list or [])]
+        if len(available_classes) == 0:
+            raise ValueError("No classes available after excluding avoid_list!")
+        sample_classes = torch.tensor([available_classes[i % len(available_classes)] 
+                                        for i in torch.randint(0, len(available_classes), (batch_size,)).tolist()])
         print('Generating images for {}'.format(list(sample_classes.numpy())))
     
     cond_input = {
@@ -110,29 +114,40 @@ def sample(model, scheduler, train_config, diffusion_model_config,
         
         # Convert each image to PIL and add class labels
         im_size = ims.shape[-1]
-        label_height = 20
+        scale_factor = 2  # Scale up images for better visibility
+        scaled_size = im_size * scale_factor
+        label_height = 25
         num_images = ims.shape[0]
+        num_cols = 5  # 5 columns grid
+        num_rows = (num_images + num_cols - 1) // num_cols  # Ceiling division
         
-        # Create a new image with space for labels
-        total_width = im_size * num_images
-        total_height = im_size + label_height
+        # Create a new image with grid layout
+        total_width = scaled_size * num_cols
+        total_height = (scaled_size + label_height) * num_rows
         combined_img = Image.new('RGB', (total_width, total_height), color='white')
         draw = ImageDraw.Draw(combined_img)
         
         # Try to load a font, fall back to default if not available
         try:
-            font = ImageFont.truetype("arial.ttf", 12)
+            font = ImageFont.truetype("arial.ttf", 14)
         except:
             font = ImageFont.load_default()
         
-        # Place each image and its label
+        # Place each image and its label in grid
         for idx in range(num_images):
             single_im = ims[idx]
             single_pil = torchvision.transforms.ToPILImage()(single_im)
+            # Scale up the image
+            single_pil = single_pil.resize((scaled_size, scaled_size), Image.NEAREST)
+            
+            # Calculate grid position
+            row = idx // num_cols
+            col = idx % num_cols
+            x_offset = col * scaled_size
+            y_offset = row * (scaled_size + label_height)
             
             # Paste image
-            x_offset = idx * im_size
-            combined_img.paste(single_pil, (x_offset, 0))
+            combined_img.paste(single_pil, (x_offset, y_offset))
             
             # Draw class label below the image
             target_cls = sample_classes[idx].item()
@@ -145,8 +160,8 @@ def sample(model, scheduler, train_config, diffusion_model_config,
             # Center the text
             text_bbox = draw.textbbox((0, 0), label_text, font=font)
             text_width = text_bbox[2] - text_bbox[0]
-            text_x = x_offset + (im_size - text_width) // 2
-            draw.text((text_x, im_size + 2), label_text, fill='black', font=font)
+            text_x = x_offset + (scaled_size - text_width) // 2
+            draw.text((text_x, y_offset + scaled_size + 2), label_text, fill='black', font=font)
         
         if not os.path.exists(os.path.join(train_config['task_name'], 'cond_class_samples')):
             os.mkdir(os.path.join(train_config['task_name'], 'cond_class_samples'))
