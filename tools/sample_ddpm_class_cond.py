@@ -4,7 +4,7 @@ import argparse
 import yaml
 import os
 from torchvision.utils import make_grid
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from tqdm import tqdm
 from models.unet_cond_base import Unet
 from models.vqvae import VQVAE
@@ -107,13 +107,51 @@ def sample(model, scheduler, train_config, diffusion_model_config,
         
         ims = torch.clamp(ims, -1., 1.).detach().cpu()
         ims = (ims + 1) / 2
-        grid = make_grid(ims, nrow=1)
-        img = torchvision.transforms.ToPILImage()(grid)
+        
+        # Convert each image to PIL and add class labels
+        im_size = ims.shape[-1]
+        label_height = 20
+        num_images = ims.shape[0]
+        
+        # Create a new image with space for labels
+        total_width = im_size * num_images
+        total_height = im_size + label_height
+        combined_img = Image.new('RGB', (total_width, total_height), color='white')
+        draw = ImageDraw.Draw(combined_img)
+        
+        # Try to load a font, fall back to default if not available
+        try:
+            font = ImageFont.truetype("arial.ttf", 12)
+        except:
+            font = ImageFont.load_default()
+        
+        # Place each image and its label
+        for idx in range(num_images):
+            single_im = ims[idx]
+            single_pil = torchvision.transforms.ToPILImage()(single_im)
+            
+            # Paste image
+            x_offset = idx * im_size
+            combined_img.paste(single_pil, (x_offset, 0))
+            
+            # Draw class label below the image
+            target_cls = sample_classes[idx].item()
+            label_text = f"cls:{target_cls}"
+            
+            # Add avoid info if present
+            if avoid_list and len(avoid_list) > 0:
+                label_text = f"t:{target_cls} a:{avoid_list}"
+            
+            # Center the text
+            text_bbox = draw.textbbox((0, 0), label_text, font=font)
+            text_width = text_bbox[2] - text_bbox[0]
+            text_x = x_offset + (im_size - text_width) // 2
+            draw.text((text_x, im_size + 2), label_text, fill='black', font=font)
         
         if not os.path.exists(os.path.join(train_config['task_name'], 'cond_class_samples')):
             os.mkdir(os.path.join(train_config['task_name'], 'cond_class_samples'))
-        img.save(os.path.join(train_config['task_name'], 'cond_class_samples', 'x0_{}.png'.format(i)))
-        img.close()
+        combined_img.save(os.path.join(train_config['task_name'], 'cond_class_samples', 'x0_{}.png'.format(i)))
+        combined_img.close()
     ##############################################################
 
 def infer(args):
