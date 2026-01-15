@@ -102,11 +102,29 @@ def train(args):
     optimizer = Adam(model.parameters(), lr=train_config['ldm_lr'])
     criterion = torch.nn.MSELoss()
     
+    # Setup LR scheduler
+    lr_scheduler_type = get_config_value(train_config, 'lr_scheduler', 'none')
+    lr_scheduler = None
+    if lr_scheduler_type == 'cosine':
+        from torch.optim.lr_scheduler import CosineAnnealingLR
+        lr_scheduler = CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=1e-7)
+        print(f'Using CosineAnnealingLR scheduler with T_max={num_epochs}')
+    
+    # Setup Early Stopping
+    early_stopping_patience = get_config_value(train_config, 'early_stopping_patience', 7)
+    best_loss = float('inf')
+    patience_counter = 0
+    best_epoch = 0
+    best_model_state = None
+    
     # Load vae and freeze parameters ONLY if latents already not saved
     if not im_dataset.use_latents:
         assert vae is not None
         for param in vae.parameters():
             param.requires_grad = False
+    
+    # Get use_avoid_conditioning flag for checkpoint naming
+    use_avoid_conditioning = get_config_value(train_config, 'use_avoid_conditioning', True)
     
     # Run training
     for epoch_idx in range(num_epochs):
@@ -151,9 +169,6 @@ def train(args):
                 num_classes = condition_config['class_condition_config']['num_classes']
                 class_drop_prob = get_config_value(condition_config['class_condition_config'],
                                                    'cond_drop_prob', 0.)
-                
-                # Check if avoid conditioning is enabled
-                use_avoid_conditioning = get_config_value(train_config, 'use_avoid_conditioning', True)
                 
                 # Get actual class labels from cond_input
                 # Check if cond_input['class'] is already one-hot encoded or just indices
@@ -209,13 +224,48 @@ def train(args):
             losses.append(loss.item())
             loss.backward()
             optimizer.step()
-        print('Finished epoch:{} | Loss : {:.4f}'.format(
-            epoch_idx + 1,
-            np.mean(losses)))
-        torch.save(model.state_dict(), os.path.join(train_config['task_name'],
-                                                    train_config['ldm_ckpt_name']))
+        
+        # Calculate epoch loss
+        epoch_loss = np.mean(losses)
+        current_lr = optimizer.param_groups[0]['lr']
+        print('Finished epoch:{} | Loss : {:.4f} | LR: {:.2e}'.format(
+            epoch_idx + 1, epoch_loss, current_lr))
+        
+        # Step LR scheduler
+        if lr_scheduler is not None:
+            lr_scheduler.step()
+        
+        # Check for improvement and save best model
+        if epoch_loss < best_loss:
+            best_loss = epoch_loss
+            best_epoch = epoch_idx + 1
+            patience_counter = 0
+            best_model_state = model.state_dict().copy()
+            
+            # Generate dynamic checkpoint name
+            scheduler_name = lr_scheduler_type if lr_scheduler_type != 'none' else 'const'
+            lr_str = f"{train_config['ldm_lr']:.0e}".replace('-', '')
+            ckpt_name = f"loss{best_loss:.4f}_ep{best_epoch}_lr{lr_str}_{scheduler_name}_avoid{use_avoid_conditioning}.pth"
+            ckpt_path = os.path.join(train_config['task_name'], ckpt_name)
+            
+            torch.save(best_model_state, ckpt_path)
+            print(f'New best model saved: {ckpt_name}')
+        else:
+            patience_counter += 1
+            print(f'No improvement for {patience_counter}/{early_stopping_patience} epochs')
+        
+        # Early stopping check
+        if patience_counter >= early_stopping_patience:
+            print(f'\nEarly stopping triggered after {epoch_idx + 1} epochs!')
+            print(f'Best loss: {best_loss:.4f} at epoch {best_epoch}')
+            break
     
-    print('Done Training ...')
+    # Save final best model with standard name for compatibility
+    if best_model_state is not None:
+        torch.save(best_model_state, os.path.join(train_config['task_name'],
+                                                   train_config['ldm_ckpt_name']))
+    
+    print(f'\nDone Training! Best loss: {best_loss:.4f} at epoch {best_epoch}')
 
 
 if __name__ == '__main__':

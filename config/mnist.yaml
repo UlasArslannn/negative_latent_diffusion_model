@@ -44,6 +44,8 @@ autoencoder_params:
 train_params:
   seed: 1111
   use_avoid_conditioning: true
+  lr_scheduler: "cosine"
+  early_stopping_patience: 7
   task_name: "mnist"
   ldm_batch_size: 64
   autoencoder_batch_size: 64
