@@ -151,10 +151,9 @@ def train(args):
                 num_classes = condition_config['class_condition_config']['num_classes']
                 class_drop_prob = get_config_value(condition_config['class_condition_config'],
                                                    'cond_drop_prob', 0.)
-                avoid_drop_prob = get_config_value(condition_config['class_condition_config'],
-                                                   'avoid_drop_prob', 0.1)
-                max_avoid = get_config_value(condition_config['class_condition_config'],
-                                             'max_avoid', 3)
+                
+                # Check if avoid conditioning is enabled
+                use_avoid_conditioning = get_config_value(train_config, 'use_avoid_conditioning', True)
                 
                 # Get actual class labels from cond_input
                 # Check if cond_input['class'] is already one-hot encoded or just indices
@@ -171,23 +170,30 @@ def train(args):
                     class_indices = class_tensor.argmax(dim=1).tolist()
                     class_condition = class_tensor.float()
                 
-                # Generate random avoid lists for each sample in batch
-                # Ensures current class is not in avoid list
-                from utils.diffusion_utils import generate_random_avoid_list, create_avoid_condition_tensor, drop_avoid_condition
-                
-                avoid_lists = []
-                for class_idx in class_indices:
-                    avoid_list = generate_random_avoid_list(num_classes, class_idx, max_avoid)
-                    avoid_lists.append(avoid_list)
-                
-                # Create avoid condition tensor
-                avoid_condition = create_avoid_condition_tensor(avoid_lists, num_classes, device)
-                
                 # Apply dropout to class condition
                 cond_input['class'] = drop_class_condition(class_condition, class_drop_prob, im)
                 
-                # Apply dropout to avoid condition
-                cond_input['avoid'] = drop_avoid_condition(avoid_condition, avoid_drop_prob, im)
+                # Only generate avoid conditioning if enabled
+                if use_avoid_conditioning:
+                    avoid_drop_prob = get_config_value(condition_config['class_condition_config'],
+                                                       'avoid_drop_prob', 0.1)
+                    max_avoid = get_config_value(condition_config['class_condition_config'],
+                                                 'max_avoid', 3)
+                    
+                    # Generate random avoid lists for each sample in batch
+                    # Ensures current class is not in avoid list
+                    from utils.diffusion_utils import generate_random_avoid_list, create_avoid_condition_tensor, drop_avoid_condition
+                    
+                    avoid_lists = []
+                    for class_idx in class_indices:
+                        avoid_list = generate_random_avoid_list(num_classes, class_idx, max_avoid)
+                        avoid_lists.append(avoid_list)
+                    
+                    # Create avoid condition tensor
+                    avoid_condition = create_avoid_condition_tensor(avoid_lists, num_classes, device)
+                    
+                    # Apply dropout to avoid condition
+                    cond_input['avoid'] = drop_avoid_condition(avoid_condition, avoid_drop_prob, im)
             ################################################
             
             # Sample random noise

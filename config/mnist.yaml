@@ -43,6 +43,7 @@ autoencoder_params:
 
 train_params:
   seed: 1111
+  use_avoid_conditioning: true
   task_name: "mnist"
   ldm_batch_size: 64
   autoencoder_batch_size: 64
