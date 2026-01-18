@@ -102,6 +102,16 @@ def train(args):
     image_save_steps = training_config['autoencoder_img_save_steps']
     img_save_count = 0
     
+    # Best loss tracking for checkpoint saving
+    best_loss = float('inf')
+    best_epoch = 0
+    best_model_state = None
+    best_disc_state = None
+    
+    # Early stopping setup
+    early_stopping_patience = training_config.get('early_stopping_patience', 10)
+    patience_counter = 0
+    
     for epoch in range(num_epochs):
         
         recon_loss_logger = []
@@ -207,12 +217,15 @@ def train(args):
         optimizer_gen.step()
         optimizer_gen.zero_grad()
         
+        # Calculate epoch loss (use reconstruction loss as primary metric)
+        epoch_loss = np.mean(recon_loss_logger)
+        
         if len(disc_loss_logger) > 0:
             print(
                 'Finished epoch: {} | Recon Loss : {:.4f} | Perceptual Loss : {:.4f} | '
                 'Codebook : {:.4f} | G Loss : {:.4f} | D Loss {:.4f}'.
                 format(epoch + 1,
-                       np.mean(recon_loss_logger),
+                       epoch_loss,
                        np.mean(perceptual_loss_logger),
                        np.mean(codebook_loss_logger),
                        np.mean(gen_loss_logger),
@@ -220,15 +233,50 @@ def train(args):
         else:
             print('Finished epoch: {} | Recon Loss : {:.4f} | Perceptual Loss : {:.4f} | Codebook : {:.4f}'.
                   format(epoch + 1,
-                         np.mean(recon_loss_logger),
+                         epoch_loss,
                          np.mean(perceptual_loss_logger),
-                         np.mean(disc_loss_logger)))
+                         np.mean(codebook_loss_logger)))
 
+        # Check for improvement and save best model
+        if epoch_loss < best_loss:
+            best_loss = epoch_loss
+            best_epoch = epoch + 1
+            patience_counter = 0
+            best_model_state = model.state_dict().copy()
+            best_disc_state = disc_model.state_dict().copy()
+            
+            # Generate dynamic checkpoint name
+            lr_str = f"{training_config['autoencoder_lr']:.0e}".replace('-', '')
+            ckpt_name = f"vqvae_loss{best_loss:.4f}_ep{best_epoch}_lr{lr_str}.pth"
+            disc_ckpt_name = f"disc_loss{best_loss:.4f}_ep{best_epoch}_lr{lr_str}.pth"
+            
+            torch.save(best_model_state, os.path.join(training_config['task_name'], ckpt_name))
+            torch.save(best_disc_state, os.path.join(training_config['task_name'], disc_ckpt_name))
+            print(f'New best model saved: {ckpt_name}')
+        else:
+            patience_counter += 1
+            print(f'No improvement for {patience_counter}/{early_stopping_patience} epochs')
+        
+        # Early stopping check
+        if patience_counter >= early_stopping_patience:
+            print(f'\nEarly stopping triggered after {epoch + 1} epochs!')
+            print(f'Best Recon Loss: {best_loss:.4f} at epoch {best_epoch}')
+            break
+        
+        # Also save latest checkpoint with standard names for compatibility
         torch.save(model.state_dict(), os.path.join(training_config['task_name'],
                                                     training_config['vqvae_autoencoder_ckpt_name']))
         torch.save(disc_model.state_dict(), os.path.join(training_config['task_name'],
                                                             training_config['vqvae_discriminator_ckpt_name']))
-    print('Done Training...')
+    
+    # Save final best model with standard name for compatibility
+    if best_model_state is not None:
+        torch.save(best_model_state, os.path.join(training_config['task_name'],
+                                                   training_config['vqvae_autoencoder_ckpt_name']))
+        torch.save(best_disc_state, os.path.join(training_config['task_name'],
+                                                  training_config['vqvae_discriminator_ckpt_name']))
+    
+    print(f'\nDone Training! Best Recon Loss: {best_loss:.4f} at epoch {best_epoch}')
     
 
 if __name__ == '__main__':
