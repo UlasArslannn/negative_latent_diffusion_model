@@ -2,7 +2,7 @@ dataset_params:
   im_path: "/content/negative_latent_diffusion_model/data/CelebAMask-HQ"
   im_channels : 3
   im_size : 256
-  name: 'celebhq'
+  name: 'celebA'
 
 diffusion_params:
   num_timesteps : 1000
