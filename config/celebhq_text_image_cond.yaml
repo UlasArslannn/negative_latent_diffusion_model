@@ -73,8 +73,8 @@ train_params:
   cf_guidance_scale : 1.0
   vae_latent_dir_name: 'vae_latents'
   vqvae_latent_dir_name: 'vqvae_latents'
-  ldm_ckpt_name: 'ddpm_ckpt_text_image_cond_clip.pth'
-  vqvae_autoencoder_ckpt_name: 'vqvae_autoencoder_ckpt.pth'
+  ldm_ckpt_name: 'loss0.2293_ep6_lr1e05_const_avoidTrue.pth'
+  vqvae_autoencoder_ckpt_name: 'vqvae_loss0.0118_ep7_lr1e05.pth'
   vae_autoencoder_ckpt_name: 'vqvae_autoencoder_ckpt.pth'
-  vqvae_discriminator_ckpt_name: 'vqvae_discriminator_ckpt.pth'
+  vqvae_discriminator_ckpt_name: 'disc_loss0.0118_ep7_lr1e05.pth'
   vae_discriminator_ckpt_name: 'vae_discriminator_ckpt.pth'
