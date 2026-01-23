@@ -35,7 +35,7 @@ A PyTorch implementation of **Latent Diffusion Models** with **Negative/Avoid Co
 ### Avoid Conditioning Example
 | Target: 7, Avoid: [1, 9] |
 |--------------------------|
-| ![Avoid](assets/samples/avoid_example.png) |
+| ![Avoid](assets/samples/avoid_example.png)  |
 
 ### Text + Mask Conditional on CelebHQ
 | Text Prompt | Generated Image |
