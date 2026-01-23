@@ -14,7 +14,6 @@ from scheduler.linear_noise_scheduler import LinearNoiseScheduler
 from transformers import DistilBertModel, DistilBertTokenizer, CLIPTokenizer, CLIPTextModel
 from utils.config_utils import *
 from utils.text_utils import *
-from dataset.celeb_dataset import CelebDataset
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -58,27 +57,53 @@ def sample(model, scheduler, train_config, diffusion_model_config,
     print(f"Generating with prompt: '{text_prompt}'")
     
     condition_config = get_config_value(diffusion_model_config, key='condition_config', default_value=None)
-    validate_image_config(condition_config)
     
-    # This is required to get a random but valid mask
-    dataset = CelebDataset(split='train',
-                           im_path=dataset_config['im_path'],
-                           im_size=dataset_config['im_size'],
-                           im_channels=dataset_config['im_channels'],
-                           use_latents=True,
-                           latent_path=os.path.join(train_config['task_name'],
-                                                    train_config['vqvae_latent_dir_name']),
-                           condition_config=condition_config)
-    mask_idx = random.randint(0, len(dataset.masks))
-    mask = dataset.get_mask(mask_idx).unsqueeze(0).to(device)
-    uncond_input = {
-        'text': uncond_text_embed,
-        'image': torch.zeros_like(mask)
-    }
-    cond_input = {
-        'text': text_prompt_embed,
-        'image': mask
-    }
+    # Check if image conditioning is used
+    use_image_cond = 'image' in condition_config.get('condition_types', []) if condition_config else False
+    
+    if use_image_cond:
+        validate_image_config(condition_config)
+        # Generate a random mask instead of loading from dataset
+        # This removes the need for the dataset during sampling
+        mask_channels = condition_config['image_condition_config']['image_condition_input_channels']
+        mask_h = condition_config['image_condition_config']['image_condition_h']
+        mask_w = condition_config['image_condition_config']['image_condition_w']
+        
+        # Create a random segmentation-like mask (values 0 or 1 per channel)
+        # Each channel represents a face part (skin, nose, eyes, etc.)
+        mask = torch.zeros((1, mask_channels, mask_h, mask_w), device=device)
+        # Randomly activate some mask channels to simulate face parts
+        for ch in range(mask_channels):
+            if random.random() > 0.3:  # 70% chance to include each part
+                # Create a random elliptical region for this face part
+                center_y, center_x = random.randint(mask_h//4, 3*mask_h//4), random.randint(mask_w//4, 3*mask_w//4)
+                radius_y, radius_x = random.randint(mask_h//8, mask_h//3), random.randint(mask_w//8, mask_w//3)
+                y_grid, x_grid = torch.meshgrid(torch.arange(mask_h), torch.arange(mask_w), indexing='ij')
+                ellipse = ((y_grid - center_y)**2 / (radius_y**2 + 1e-6) + (x_grid - center_x)**2 / (radius_x**2 + 1e-6)) < 1
+                mask[0, ch] = ellipse.float().to(device)
+        print(f"Generated random mask with shape: {mask.shape}")
+    else:
+        mask = None
+        print("No image conditioning used")
+    
+    # Build conditional inputs
+    if mask is not None:
+        uncond_input = {
+            'text': uncond_text_embed,
+            'image': torch.zeros_like(mask)
+        }
+        cond_input = {
+            'text': text_prompt_embed,
+            'image': mask
+        }
+    else:
+        # Text-only conditioning
+        uncond_input = {
+            'text': uncond_text_embed
+        }
+        cond_input = {
+            'text': text_prompt_embed
+        }
     
     # Get CFG scale - command line override takes priority
     cf_guidance_scale = cfg_scale_override if cfg_scale_override is not None else get_config_value(train_config, 'cf_guidance_scale', 1.0)

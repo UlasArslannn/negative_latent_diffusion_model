@@ -25,23 +25,31 @@ A PyTorch implementation of **Latent Diffusion Models** with **Negative/Avoid Co
 ### Autoencoder Reconstruction on CelebHQ
 | Input | Reconstruction |
 |-------|----------------|
-| ![Input](assets/samples/celebhq_input.png) | ![Reconstruction](assets/samples/celebhq_recon.png) |
+| ![Input](results/original_samples.png) | ![Encoded](results/encoded_samples.png) ![Reconstruction](results/reconstructed_samples.png) |
 
-### Class Conditional Generation on MNIST
-| Class 0 | Class 1 | Class 5 | Class 7 | Class 9 |
-|---------|---------|---------|---------|---------|
-| ![0](assets/samples/class_0.png) | ![1](assets/samples/class_1.png) | ![5](assets/samples/class_5.png) | ![7](assets/samples/class_7.png) | ![9](assets/samples/class_9.png) |
+### Unconditional Generation on MNIST
+| Class Random |
+|---------|
+| ![Random](results/mnist_unconditional.png) |
 
 ### Avoid Conditioning Example
-| Target: 7, Avoid: [1, 9] |
+| Target: random, Avoid: [1, 7, 8] |
 |--------------------------|
-| ![Avoid](assets/samples/avoid_example.png) |
+| ![Avoid](results/mnist_cond_random.png) |
+
+| Target: random, Avoid: [1, 7, 8] |
+|--------------------------|
+| ![Avoid](results/mnist_cond_random_2.png) |
+
+| Target: 2, Avoid: [1, 7, 8] |
+|--------------------------|
+| ![Avoid](results/mnist_cond_2.png) |
 
 ### Text + Mask Conditional on CelebHQ
 | Text Prompt | Generated Image |
 |-------------|-----------------|
-| "She is a woman with blond hair" | ![Blond](assets/samples/text_blond.png) |
-| "She is a woman with black hair" | ![Black](assets/samples/text_black.png) |
+| "Condition: A young man with short hair" | ![Man](results/celeb_cond.png) |
+| "Condition: Man, Negative: Mustache, Beard, Facial Hair" | ![Negative Man](results/celeb_negative_cond.png) |
 
 ---
 
