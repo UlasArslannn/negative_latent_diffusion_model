@@ -25,7 +25,7 @@ A PyTorch implementation of **Latent Diffusion Models** with **Negative/Avoid Co
 ### Autoencoder Reconstruction on CelebHQ
 | Input | Encoded | Reconstruction |
 |-------|---------|----------------|
-| ![Input](results/original_samples.png) | ![Encoded](results/encoded_samples.png) | ![Reconstruction](results/reconstructed_samples.png) |
+| ![Input](results/input_samples.png) | ![Encoded](results/encoded_samples.png) | ![Reconstruction](results/reconstructed_samples.png) |
 
 ### Unconditional Generation on MNIST
 | Class Random |
@@ -52,7 +52,7 @@ A PyTorch implementation of **Latent Diffusion Models** with **Negative/Avoid Co
 | Text Prompt | Generated Image |
 |-------------|-----------------|
 | "Condition: A young man with short hair" | ![Man](results/celeb_cond.png) |
-| "Condition: Man, Negative: Mustache, Beard, Facial Hair" | ![Negative Man](results/celeb_negative_cond.png) |
+| "Condition: Man,       Negative: Mustache, Beard, Facial Hair" | ![Negative Man](results/celeb_negative_cond.png) |
 
 ---
 
