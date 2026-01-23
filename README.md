@@ -23,9 +23,9 @@ A PyTorch implementation of **Latent Diffusion Models** with **Negative/Avoid Co
 ## 🖼️ Sample Outputs
 
 ### Autoencoder Reconstruction on CelebHQ
-| Input | Reconstruction |
-|-------|----------------|
-| ![Input](results/original_samples.png) | ![Encoded](results/encoded_samples.png) ![Reconstruction](results/reconstructed_samples.png) |
+| Input | Encoded | Reconstruction |
+|-------|---------|----------------|
+| ![Input](results/original_samples.png) | ![Encoded](results/encoded_samples.png) | ![Reconstruction](results/reconstructed_samples.png) |
 
 ### Unconditional Generation on MNIST
 | Class Random |
@@ -33,15 +33,18 @@ A PyTorch implementation of **Latent Diffusion Models** with **Negative/Avoid Co
 | ![Random](results/mnist_unconditional.png) |
 
 ### Avoid Conditioning Example
-| Target: random, Avoid: [1, 7, 8] |
+| Target: random, 
+  Avoid: [1, 7, 8] |
 |--------------------------|
 | ![Avoid](results/mnist_cond_random.png) |
 
-| Target: random, Avoid: [1, 7, 8] |
+| Target: 2, 
+  Avoid: [1, 7, 8] 'less trained' |
 |--------------------------|
 | ![Avoid](results/mnist_cond_random_2.png) |
 
-| Target: 2, Avoid: [1, 7, 8] |
+| Target: 2, 
+  Avoid: [1, 7, 8] 'more trained' |
 |--------------------------|
 | ![Avoid](results/mnist_cond_2.png) |
 
