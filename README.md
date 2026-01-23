@@ -3,45 +3,61 @@
 A PyTorch implementation of **Latent Diffusion Models** with **Negative/Avoid Conditioning** support. This project enables conditional image generation while actively avoiding specified classes during the diffusion process.
 
 ![Architecture Overview](assets/architecture.png)
+
 <!-- TODO: Add your architecture diagram here -->
 
 ---
 
 ## ✨ Features
 
-| Feature | Description |
-|---------|-------------|
-| 🔄 **VQ-VAE** | Vector Quantized Variational Autoencoder for latent space compression |
-| 🎯 **Class Conditioning** | Generate images conditioned on specific classes |
-| 🚫 **Avoid Conditioning** | Novel approach to steer generation away from unwanted classes |
-| 📝 **Text Conditioning** | CLIP-based text embeddings for text-to-image generation |
-| 🖼️ **Image/Mask Conditioning** | Condition generation on semantic masks |
-| 📊 **Multi-Dataset** | Support for MNIST and CelebA-HQ datasets |
+| Feature                        | Description                                                           |
+| ------------------------------ | --------------------------------------------------------------------- |
+| 🔄 **VQ-VAE**                  | Vector Quantized Variational Autoencoder for latent space compression |
+| 🎯 **Class Conditioning**      | Generate images conditioned on specific classes                       |
+| 🚫 **Avoid Conditioning**      | Novel approach to steer generation away from unwanted classes         |
+| 📝 **Text Conditioning**       | CLIP-based text embeddings for text-to-image generation               |
+| 🖼️ **Image/Mask Conditioning** | Condition generation on semantic masks                                |
+| 📊 **Multi-Dataset**           | Support for MNIST and CelebA-HQ datasets                              |
 
 ---
 
 ## 🖼️ Sample Outputs
 
 ### Autoencoder Reconstruction on CelebHQ
-| Input | Reconstruction |
-|-------|----------------|
-| ![Input](assets/samples/celebhq_input.png) | ![Reconstruction](assets/samples/celebhq_recon.png) |
 
-### Class Conditional Generation on MNIST
-| Class 0 | Class 1 | Class 5 | Class 7 | Class 9 |
-|---------|---------|---------|---------|---------|
-| ![0](assets/samples/class_0.png) | ![1](assets/samples/class_1.png) | ![5](assets/samples/class_5.png) | ![7](assets/samples/class_7.png) | ![9](assets/samples/class_9.png) |
+| Input                                  | Reconstruction                                                                               |
+| -------------------------------------- | -------------------------------------------------------------------------------------------- |
+| ![Input](results/original_samples.png) | ![Encoded](results/encoded_samples.png) ![Reconstruction](results/reconstructed_samples.png) |
+
+### Unconditional Generation on MNIST
+
+| Class Random                               |
+| ------------------------------------------ |
+| ![Random](results/mnist_unconditional.png) |
 
 ### Avoid Conditioning Example
-| Target: 7, Avoid: [1, 9] |
-|--------------------------|
-| ![Avoid](assets/samples/avoid_example.png)  |
+
+| Target: random, Avoid: [1, 7, 8] |
+| -------------------------------- |
+
+# | ![Avoid](assets/samples/avoid_example.png) |
+
+| ![Avoid](results/mnist_cond_random.png) |
+
+| Target: random, Avoid: [1, 7, 8]          |
+| ----------------------------------------- |
+| ![Avoid](results/mnist_cond_random_2.png) |
+
+| Target: 2, Avoid: [1, 7, 8]        |
+| ---------------------------------- |
+| ![Avoid](results/mnist_cond_2.png) |
 
 ### Text + Mask Conditional on CelebHQ
-| Text Prompt | Generated Image |
-|-------------|-----------------|
-| "She is a woman with blond hair" | ![Blond](assets/samples/text_blond.png) |
-| "She is a woman with black hair" | ![Black](assets/samples/text_black.png) |
+
+| Text Prompt                                              | Generated Image                                  |
+| -------------------------------------------------------- | ------------------------------------------------ |
+| "Condition: A young man with short hair"                 | ![Man](results/celeb_cond.png)                   |
+| "Condition: Man, Negative: Mustache, Beard, Facial Hair" | ![Negative Man](results/celeb_negative_cond.png) |
 
 ---
 
@@ -124,6 +140,7 @@ pip install -r requirements.txt
 Download VGG weights for perceptual loss from [this link](https://github.com/richzhang/PerceptualSimilarity/blob/master/lpips/weights/v0.1/vgg.pth) (open in browser, download raw file).
 
 Place the file at:
+
 ```
 models/weights/v0.1/vgg.pth
 ```
@@ -174,6 +191,7 @@ negative_latent_diffusion_model/
 ```
 
 Create mask images from annotations:
+
 ```bash
 python -m utils.create_celeb_mask
 ```
@@ -228,32 +246,33 @@ python -m tools.sample_ddpm_class_cond --config config/mnist_class_cond.yaml
 
 ### Key Parameters
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `num_timesteps` | Diffusion timesteps | 1000 |
-| `ldm_epochs` | Training epochs | 100 |
-| `ldm_batch_size` | Batch size | 64 |
-| `ldm_lr` | Learning rate | 1e-5 |
-| `lr_scheduler` | LR scheduler type | cosine |
-| `cf_guidance_scale` | Classifier-free guidance scale | 1.0 |
-| `autoencoder_acc_steps` | Gradient accumulation steps | 4 |
-| `save_latents` | Save latents for faster DDPM training | False |
+| Parameter               | Description                           | Default |
+| ----------------------- | ------------------------------------- | ------- |
+| `num_timesteps`         | Diffusion timesteps                   | 1000    |
+| `ldm_epochs`            | Training epochs                       | 100     |
+| `ldm_batch_size`        | Batch size                            | 64      |
+| `ldm_lr`                | Learning rate                         | 1e-5    |
+| `lr_scheduler`          | LR scheduler type                     | cosine  |
+| `cf_guidance_scale`     | Classifier-free guidance scale        | 1.0     |
+| `autoencoder_acc_steps` | Gradient accumulation steps           | 4       |
+| `save_latents`          | Save latents for faster DDPM training | False   |
 
 ### Avoid Conditioning Parameters
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `use_avoid_conditioning` | Enable avoid conditioning | true |
-| `avoid_drop_prob` | Dropout probability for avoid | 0.1 |
-| `max_avoid` | Maximum classes to avoid | 3 |
-| `cond_drop_prob` | Conditional dropout | 0.1 |
+| Parameter                | Description                   | Default |
+| ------------------------ | ----------------------------- | ------- |
+| `use_avoid_conditioning` | Enable avoid conditioning     | true    |
+| `avoid_drop_prob`        | Dropout probability for avoid | 0.1     |
+| `max_avoid`              | Maximum classes to avoid      | 3       |
+| `cond_drop_prob`         | Conditional dropout           | 0.1     |
 
 ### Conditioning Config Examples
 
 **Class Conditional:**
+
 ```yaml
 condition_config:
-  condition_types: ['class']
+  condition_types: ["class"]
   class_condition_config:
     num_classes: 10
     cond_drop_prob: 0.1
@@ -262,11 +281,12 @@ condition_config:
 ```
 
 **Text + Mask Conditional:**
+
 ```yaml
 condition_config:
-  condition_types: ['text', 'image']
+  condition_types: ["text", "image"]
   text_condition_config:
-    text_embed_model: 'clip'
+    text_embed_model: "clip"
     text_embed_dim: 512
     cond_drop_prob: 0.1
   image_condition_config:
@@ -303,6 +323,7 @@ samples = sampler.generate(
 ## 📤 Output Structure
 
 ### AutoEncoder Training
+
 ```
 task_name/
 ├── vqvae_autoencoder_ckpt.pth      # Latest autoencoder checkpoint
@@ -312,6 +333,7 @@ task_name/
 ```
 
 ### DDPM Training
+
 ```
 task_name/
 ├── ddpm_ckpt_class_cond.pth         # Latest DDPM checkpoint
@@ -324,6 +346,7 @@ task_name/
 ```
 
 ### Conditional Sampling
+
 ```
 task_name/
 ├── cond_class_samples/              # Class conditional samples
@@ -349,13 +372,13 @@ task_name/
 
 ### Loss Functions
 
-| Loss | Weight | Purpose |
-|------|--------|---------|
-| MSE Reconstruction | 1.0 | Pixel-level accuracy |
-| Perceptual (LPIPS) | 1.0 | Feature-level similarity |
-| Codebook | 1.0 | Discrete representation learning |
-| Commitment | 0.2 | Encoder commitment to codebook |
-| Adversarial | 0.5 | GAN-based realism (after disc_start steps) |
+| Loss               | Weight | Purpose                                    |
+| ------------------ | ------ | ------------------------------------------ |
+| MSE Reconstruction | 1.0    | Pixel-level accuracy                       |
+| Perceptual (LPIPS) | 1.0    | Feature-level similarity                   |
+| Codebook           | 1.0    | Discrete representation learning           |
+| Commitment         | 0.2    | Encoder commitment to codebook             |
+| Adversarial        | 0.5    | GAN-based realism (after disc_start steps) |
 
 ---
 
@@ -366,6 +389,7 @@ To train on your own dataset:
 1. **Create config file** based on `celebhq_text_image_cond.yaml`
 
 2. **Create dataset class** returning:
+
 ```python
 # Unconditional
 return image_tensor
@@ -379,6 +403,7 @@ return (image_tensor, {
 ```
 
 3. **Register dataset** in training script:
+
 ```python
 im_dataset_cls = {
     'mnist': MnistDataset,
